@@ -111,53 +111,89 @@ export const Generators = {
 
     Cebolinha: (): VoxelData[] => {
         const map = new Map<string, VoxelData>();
-        const CX = 0, CZ = 0;
         const Y_START = CONFIG.FLOOR_Y;
 
-        // Legs
-        for(let y=0; y<4; y++) {
-            setBlock(map, CX-1.5, Y_START+y, CZ, COLORS.SKIN);
-            setBlock(map, CX+1.5, Y_START+y, CZ, COLORS.SKIN);
-        }
-        // Shoes
-        setBlock(map, CX-1.5, Y_START, CZ+1, COLORS.DARK);
-        setBlock(map, CX+1.5, Y_START, CZ+1, COLORS.DARK);
+        // --- LAYER 1: FEET & LEGS ---
+        // Blocky Shoes (Brown/Dark)
+        fillBox(map, -3, -2, Y_START, Y_START + 1, -2, 2, COLORS.DARK); // Left
+        fillBox(map, 2, 3, Y_START, Y_START + 1, -2, 2, COLORS.DARK);   // Right
 
-        // Shorts (Black)
-        for(let y=4; y<7; y++) {
-            generateSphere(map, CX, Y_START+y, CZ, 3.2, COLORS.CEBOLINHA_SHORTS, 0.8);
-        }
+        // Legs (Skin)
+        fillBox(map, -3, -2, Y_START + 2, Y_START + 5, -1, 1, COLORS.SKIN);
+        fillBox(map, 2, 3, Y_START + 2, Y_START + 5, -1, 1, COLORS.SKIN);
 
-        // Shirt (Green)
-        for(let y=7; y<12; y++) {
-            generateSphere(map, CX, Y_START+y, CZ, 3.3, COLORS.CEBOLINHA_GREEN, 0.8);
-        }
+        // --- LAYER 2: SHORTS (Black) ---
+        // Hip area
+        fillBox(map, -3, 3, Y_START + 6, Y_START + 8, -2, 2, COLORS.CEBOLINHA_SHORTS);
+        // Leg connectors
+        fillBox(map, -3, -2, Y_START + 5, Y_START + 5, -2, 2, COLORS.CEBOLINHA_SHORTS);
+        fillBox(map, 2, 3, Y_START + 5, Y_START + 5, -2, 2, COLORS.CEBOLINHA_SHORTS);
 
-        // Arms (Skin)
-        for(let y=7; y<10; y++) {
-            setBlock(map, CX-3.5, Y_START+y, CZ, COLORS.SKIN); // Left
-            setBlock(map, CX+3.5, Y_START+y, CZ, COLORS.SKIN); // Right
-        }
+        // --- LAYER 3: TORSO (Green Shirt) ---
+        const WAIST_Y = Y_START + 9;
+        const NECK_Y = WAIST_Y + 5;
+        // Main body
+        fillBox(map, -3, 3, WAIST_Y, NECK_Y, -2, 2, COLORS.CEBOLINHA_GREEN);
+        
+        // --- LAYER 4: ARMS ---
+        // Sleeves (Green)
+        fillBox(map, -5, -4, WAIST_Y + 3, WAIST_Y + 5, -1, 1, COLORS.CEBOLINHA_GREEN); // Left
+        fillBox(map, 4, 5, WAIST_Y + 3, WAIST_Y + 5, -1, 1, COLORS.CEBOLINHA_GREEN);  // Right
+        
+        // Skin Arms
+        // Left Arm (Relaxed)
+        fillBox(map, -5, -4, WAIST_Y - 1, WAIST_Y + 2, -1, 1, COLORS.SKIN); 
+        
+        // Right Arm (Pointing - "Plan Infalível")
+        fillBox(map, 4, 5, WAIST_Y + 1, WAIST_Y + 2, 2, 4, COLORS.SKIN); // Forearm extending forward
+        fillBox(map, 4, 5, WAIST_Y + 2, WAIST_Y + 3, 0, 2, COLORS.SKIN); // Shoulder connection
+        setBlock(map, 4.5, WAIST_Y + 1, 4.5, COLORS.SKIN); // Finger tip
 
-        // Head (Large, Skin)
-        const HY = Y_START + 14;
-        generateSphere(map, CX, HY, CZ, 3.8, COLORS.SKIN);
+        // --- LAYER 5: HEAD ---
+        const HEAD_Y = NECK_Y + 1;
+        // Neck
+        fillBox(map, -1, 1, NECK_Y, NECK_Y, -1, 1, COLORS.SKIN);
 
-        // Hair (5 strands)
-        const hairY = HY + 3.5;
-        // Central hair
-        for(let i=0; i<3; i++) setBlock(map, CX, hairY+i, CZ, COLORS.HAIR);
-        // Side/Back hairs
-        for(let i=0; i<2; i++) setBlock(map, CX-2, hairY+i-0.5, CZ, COLORS.HAIR);
-        for(let i=0; i<2; i++) setBlock(map, CX+2, hairY+i-0.5, CZ, COLORS.HAIR);
-        for(let i=0; i<2; i++) setBlock(map, CX, hairY+i-0.5, CZ-2, COLORS.HAIR);
-        for(let i=0; i<2; i++) setBlock(map, CX, hairY+i+0.5, CZ+1, COLORS.HAIR);
+        // Head Block (Wide and somewhat flat)
+        const HEAD_H = 7;
+        fillBox(map, -4, 4, HEAD_Y, HEAD_Y + HEAD_H, -3, 3, COLORS.SKIN);
 
+        // Face Details
+        const FACE_Z = 3;
+        // Eyes (Black)
+        setBlock(map, -2, HEAD_Y + 4, FACE_Z + 1, COLORS.BLACK);
+        setBlock(map, -2, HEAD_Y + 5, FACE_Z + 1, COLORS.BLACK);
+        setBlock(map, 2, HEAD_Y + 4, FACE_Z + 1, COLORS.BLACK);
+        setBlock(map, 2, HEAD_Y + 5, FACE_Z + 1, COLORS.BLACK);
 
-        // Face
-        const FACE_Z = CZ + 3.2;
-        setBlock(map, CX-1, HY+0.5, FACE_Z, COLORS.BLACK);
-        setBlock(map, CX+1, HY+0.5, FACE_Z, COLORS.BLACK);
+        // Eyebrows (Scheming/Angle)
+        setBlock(map, -1, HEAD_Y + 6, FACE_Z + 1, COLORS.BLACK);
+        setBlock(map, 1, HEAD_Y + 6, FACE_Z + 1, COLORS.BLACK);
+
+        // Smile
+        fillBox(map, -1, 1, HEAD_Y + 2, HEAD_Y + 2, FACE_Z + 1, FACE_Z + 1, COLORS.BLACK);
+        setBlock(map, -2, HEAD_Y + 3, FACE_Z + 1, COLORS.BLACK);
+        setBlock(map, 2, HEAD_Y + 3, FACE_Z + 1, COLORS.BLACK);
+
+        // --- LAYER 6: THE 5 HAIRS ---
+        // Iconic 5 strands standing up
+        const HAIR_BASE_Y = HEAD_Y + HEAD_H;
+        
+        // 1. Center Strand (Tallest)
+        fillBox(map, -0.5, 0.5, HAIR_BASE_Y + 1, HAIR_BASE_Y + 5, 0, 0, COLORS.HAIR);
+        setBlock(map, 0, HAIR_BASE_Y + 5, 1, COLORS.HAIR);
+
+        // 2. Front Left Strand
+        fillBox(map, -2.5, -2.5, HAIR_BASE_Y + 1, HAIR_BASE_Y + 4, 1, 1, COLORS.HAIR);
+        
+        // 3. Front Right Strand
+        fillBox(map, 2.5, 2.5, HAIR_BASE_Y + 1, HAIR_BASE_Y + 4, 1, 1, COLORS.HAIR);
+
+        // 4. Back Left Strand
+        fillBox(map, -2, -2, HAIR_BASE_Y + 1, HAIR_BASE_Y + 3, -2, -2, COLORS.HAIR);
+
+        // 5. Back Right Strand
+        fillBox(map, 2, 2, HAIR_BASE_Y + 1, HAIR_BASE_Y + 3, -2, -2, COLORS.HAIR);
 
         return Array.from(map.values());
     },
