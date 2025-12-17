@@ -15,6 +15,16 @@ function setBlock(map: Map<string, VoxelData>, x: number, y: number, z: number, 
     map.set(key, { x: rx, y: ry, z: rz, color });
 }
 
+function fillBox(map: Map<string, VoxelData>, x1: number, x2: number, y1: number, y2: number, z1: number, z2: number, color: number) {
+    for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+        for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+            for (let z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
+                setBlock(map, x, y, z, color);
+            }
+        }
+    }
+}
+
 function generateSphere(map: Map<string, VoxelData>, cx: number, cy: number, cz: number, r: number, col: number, sy = 1) {
     const r2 = r * r;
     const xMin = Math.floor(cx - r);
@@ -211,59 +221,98 @@ export const Generators = {
 
     Cascao: (): VoxelData[] => {
         const map = new Map<string, VoxelData>();
-        const CX = 0, CZ = 0;
         const Y_START = CONFIG.FLOOR_Y;
 
-        // Legs
-        for(let y=0; y<4; y++) {
-            setBlock(map, CX-1.5, Y_START+y, CZ, COLORS.SKIN);
-            setBlock(map, CX+1.5, Y_START+y, CZ, COLORS.SKIN);
-        }
-        setBlock(map, CX-1.5, Y_START, CZ+1, COLORS.DARK);
-        setBlock(map, CX+1.5, Y_START, CZ+1, COLORS.DARK);
+        // --- LAYER 1: FEET & LEGS ---
+        // Blocky feet
+        fillBox(map, -3, -2, Y_START, Y_START + 1, -2, 2, COLORS.DARK); // Left Shoe
+        fillBox(map, 2, 3, Y_START, Y_START + 1, -2, 2, COLORS.DARK);   // Right Shoe
 
-        // Shorts (Red)
-        for(let y=4; y<7; y++) {
-            generateSphere(map, CX, Y_START+y, CZ, 3.2, COLORS.RED, 0.8);
-        }
+        // Distinct separate legs
+        fillBox(map, -3, -2, Y_START + 2, Y_START + 5, -1, 1, COLORS.SKIN);
+        fillBox(map, 2, 3, Y_START + 2, Y_START + 5, -1, 1, COLORS.SKIN);
 
-        // Shirt (Yellow/Orange)
-        for(let y=7; y<12; y++) {
-            generateSphere(map, CX, Y_START+y, CZ, 3.3, COLORS.CASCAO_SHIRT, 0.8);
-        }
+        // --- LAYER 2: SHORTS (Red) ---
+        // Hip block
+        fillBox(map, -3, 3, Y_START + 6, Y_START + 8, -2, 2, COLORS.RED);
+        // Short cuffs connecting to legs
+        fillBox(map, -3, -2, Y_START + 5, Y_START + 5, -2, 2, COLORS.RED);
+        fillBox(map, 2, 3, Y_START + 5, Y_START + 5, -2, 2, COLORS.RED);
 
-        // Arms
-        for(let y=7; y<10; y++) {
-            setBlock(map, CX-3.5, Y_START+y, CZ, COLORS.SKIN);
-            setBlock(map, CX+3.5, Y_START+y, CZ, COLORS.SKIN);
-        }
+        // --- LAYER 3: TORSO (Yellow Shirt) ---
+        // Blocky torso
+        const WAIST_Y = Y_START + 9;
+        const NECK_Y = WAIST_Y + 5; // Y_START + 14
+        fillBox(map, -3, 3, WAIST_Y, NECK_Y, -2, 2, COLORS.CASCAO_SHIRT);
 
-        // Head
-        const HY = Y_START + 14;
-        generateSphere(map, CX, HY, CZ, 3.8, COLORS.SKIN);
-
-        // Messy Hair (Black + dirt?)
-        generateSphere(map, CX, HY+3.5, CZ, 2.5, COLORS.HAIR);
-        // Random messy bits
-        setBlock(map, CX-2, HY+3, CZ, COLORS.HAIR);
-        setBlock(map, CX+2, HY+4, CZ, COLORS.HAIR);
-        setBlock(map, CX, HY+5, CZ, COLORS.HAIR);
-
-        // Face
-        const FACE_Z = CZ + 3.2;
-        setBlock(map, CX-1, HY+0.5, FACE_Z, COLORS.BLACK);
-        setBlock(map, CX+1, HY+0.5, FACE_Z, COLORS.BLACK);
+        // --- LAYER 4: ARMS ---
+        // Sleeves
+        fillBox(map, -5, -4, WAIST_Y + 3, WAIST_Y + 5, -1, 1, COLORS.CASCAO_SHIRT);
+        fillBox(map, 4, 5, WAIST_Y + 3, WAIST_Y + 5, -1, 1, COLORS.CASCAO_SHIRT);
         
-        // Dirt smudges on cheeks
-        setBlock(map, CX-2, HY-1, FACE_Z-0.5, COLORS.CASCAO_DIRT);
-        setBlock(map, CX+2, HY-1, FACE_Z-0.5, COLORS.CASCAO_DIRT);
+        // Skin Arms
+        fillBox(map, -5, -4, WAIST_Y - 1, WAIST_Y + 2, -1, 1, COLORS.SKIN); // Left Down
+        
+        // Right Arm Forward (holding umbrella)
+        fillBox(map, 4, 5, WAIST_Y + 1, WAIST_Y + 2, 2, 3, COLORS.SKIN); 
+        fillBox(map, 4, 5, WAIST_Y + 2, WAIST_Y + 3, 0, 2, COLORS.SKIN); // Shoulder connector
 
-        // Umbrella (Simple) held in left hand
-        const UX = CX-5, UY = Y_START+12, UZ = CZ;
+        // --- LAYER 5: HEAD & NECK ---
+        // Thin neck
+        fillBox(map, -1, 1, NECK_Y + 1, NECK_Y + 1, -1, 1, COLORS.SKIN);
+        
+        const HEAD_Y = NECK_Y + 2;
+        const HEAD_H = 7;
+        // Boxy Head (Width 9, Height 7, Depth 7)
+        fillBox(map, -4, 4, HEAD_Y, HEAD_Y + HEAD_H, -3, 3, COLORS.SKIN);
+
+        // Face Details
+        const FACE_Z = 3;
+        // Eyes
+        setBlock(map, -2, HEAD_Y + 4, FACE_Z + 1, COLORS.BLACK);
+        setBlock(map, -2, HEAD_Y + 5, FACE_Z + 1, COLORS.BLACK);
+        setBlock(map, 2, HEAD_Y + 4, FACE_Z + 1, COLORS.BLACK);
+        setBlock(map, 2, HEAD_Y + 5, FACE_Z + 1, COLORS.BLACK);
+        // Smile
+        fillBox(map, -2, 2, HEAD_Y + 2, HEAD_Y + 2, FACE_Z + 1, FACE_Z + 1, COLORS.BLACK);
+        setBlock(map, -3, HEAD_Y + 3, FACE_Z + 1, COLORS.BLACK);
+        setBlock(map, 3, HEAD_Y + 3, FACE_Z + 1, COLORS.BLACK);
+        // Cheeks/Dirt
+        setBlock(map, -3, HEAD_Y + 2, FACE_Z + 1, COLORS.CASCAO_DIRT);
+        setBlock(map, 3, HEAD_Y + 2, FACE_Z + 1, COLORS.CASCAO_DIRT);
+
+        // --- LAYER 6: MESSY HAIR ---
+        const HAIR_Y = HEAD_Y + HEAD_H + 1;
+        // Cap
+        fillBox(map, -4, 4, HAIR_Y, HAIR_Y, -3, 3, COLORS.HAIR);
+        // Messy top texture
+        for(let x=-4; x<=4; x++) {
+            for(let z=-3; z<=3; z++) {
+                if((x+z) % 2 !== 0) {
+                    setBlock(map, x, HAIR_Y + 1, z, COLORS.HAIR);
+                    if(Math.random() > 0.6) setBlock(map, x, HAIR_Y + 2, z, COLORS.HAIR);
+                }
+            }
+        }
+        // Sideburns/Back
+        fillBox(map, -4, -4, HEAD_Y + 3, HAIR_Y, -2, 2, COLORS.HAIR); // Left
+        fillBox(map, 4, 4, HEAD_Y + 3, HAIR_Y, -2, 2, COLORS.HAIR); // Right
+        fillBox(map, -3, 3, HEAD_Y + 2, HAIR_Y, -3, -3, COLORS.HAIR); // Back
+
+        // --- PROP: UMBRELLA ---
+        const UX = 5, UY = WAIST_Y + 1, UZ = 3;
         // Handle
-        for(let y=-4; y<2; y++) setBlock(map, UX, UY+y, UZ, COLORS.BLACK);
+        fillBox(map, UX, UX, UY - 3, UY + 6, UZ, UZ, COLORS.BLACK);
         // Canopy
-        generateSphere(map, UX, UY+2, UZ, 3.5, COLORS.UMBRELLA_GREY, 0.5);
+        const CY = UY + 6;
+        fillBox(map, UX - 3, UX + 3, CY, CY + 1, UZ - 3, UZ + 3, COLORS.UMBRELLA_GREY);
+        fillBox(map, UX - 1, UX + 1, CY + 2, CY + 2, UZ - 1, UZ + 1, COLORS.UMBRELLA_GREY);
+        setBlock(map, UX, CY + 3, UZ, COLORS.BLACK); // Tip
+
+        // --- EXTRA DIRT ---
+        setBlock(map, -2, WAIST_Y + 2, 2, COLORS.CASCAO_DIRT);
+        setBlock(map, 2, Y_START + 6, -2, COLORS.CASCAO_DIRT);
+        setBlock(map, -3, Y_START + 3, -1, COLORS.CASCAO_DIRT);
 
         return Array.from(map.values());
     },
