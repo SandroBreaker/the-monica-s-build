@@ -39,40 +39,6 @@ function generateSphere(map: Map<string, VoxelData>, cx: number, cy: number, cz:
 }
 
 export const Generators = {
-    Eagle: (): VoxelData[] => {
-        const map = new Map<string, VoxelData>();
-        // Branch
-        for (let x = -8; x < 8; x++) {
-            const y = Math.sin(x * 0.2) * 1.5;
-            const z = Math.cos(x * 0.1) * 1.5;
-            generateSphere(map, x, y, z, 1.8, COLORS.WOOD);
-            if (Math.random() > 0.7) generateSphere(map, x, y + 2, z + (Math.random() - 0.5) * 3, 1.5, COLORS.GREEN);
-        }
-        // Body
-        const EX = 0, EY = 2, EZ = 2;
-        generateSphere(map, EX, EY + 6, EZ, 4.5, COLORS.DARK, 1.4);
-        // Chest
-        for (let x = EX - 2; x <= EX + 2; x++) for (let y = EY + 4; y <= EY + 9; y++) setBlock(map, x, y, EZ + 3, COLORS.LIGHT);
-        // Wings (Rough approximation)
-        for (let x of [-4, -3, 3, 4]) for (let y = EY + 4; y <= EY + 10; y++) for (let z = EZ - 2; z <= EZ + 3; z++) setBlock(map, x, y, z, COLORS.DARK);
-        // Tail
-        for (let x = EX - 2; x <= EX + 2; x++) for (let y = EY; y <= EY + 4; y++) for (let z = EZ - 5; z <= EZ - 3; z++) setBlock(map, x, y, z, COLORS.WHITE);
-        // Head
-        const HY = EY + 12, HZ = EZ + 1;
-        generateSphere(map, EX, HY, HZ, 2.8, COLORS.WHITE);
-        generateSphere(map, EX, HY - 2, HZ, 2.5, COLORS.WHITE);
-        // Talons
-        [[-2, 0], [-2, 1], [2, 0], [2, 1]].forEach(o => setBlock(map, EX + o[0], EY + o[1], EZ, COLORS.TALON));
-        // Beak
-        [[0, 1], [0, 2], [1, 1], [-1, 1]].forEach(o => setBlock(map, EX + o[0], HY, HZ + 2 + o[1], COLORS.GOLD));
-        setBlock(map, EX, HY - 1, HZ + 3, COLORS.GOLD);
-        // Eyes
-        [[-1.5, COLORS.BLACK], [1.5, COLORS.BLACK]].forEach(o => setBlock(map, EX + o[0], HY + 0.5, HZ + 1.5, o[1]));
-        [[-1.5, COLORS.WHITE], [1.5, COLORS.WHITE]].forEach(o => setBlock(map, EX + o[0], HY + 1.5, HZ + 1.5, o[1]));
-
-        return Array.from(map.values());
-    },
-
     Monica: (): VoxelData[] => {
         const map = new Map<string, VoxelData>();
         const CX = 0, CZ = 0;
@@ -374,31 +340,6 @@ export const Generators = {
         }
         setBlock(map, RX - 0.8, HY + 0.2, HZ + 1.5, COLORS.BLACK); setBlock(map, RX + 0.8, HY + 0.2, HZ + 1.5, COLORS.BLACK);
         setBlock(map, RX, HY - 0.5, HZ + 1.8, COLORS.TALON);
-        return Array.from(map.values());
-    },
-
-    Twins: (): VoxelData[] => {
-        const map = new Map<string, VoxelData>();
-        function buildMiniEagle(offsetX: number, offsetZ: number, mirror: boolean) {
-            // Branch
-            for (let x = -5; x < 5; x++) {
-                const y = Math.sin(x * 0.4) * 0.5;
-                generateSphere(map, offsetX + x, y, offsetZ, 1.2, COLORS.WOOD);
-                if (Math.random() > 0.8) generateSphere(map, offsetX + x, y + 1, offsetZ, 1, COLORS.GREEN);
-            }
-            const EX = offsetX, EY = 1.5, EZ = offsetZ;
-            generateSphere(map, EX, EY + 4, EZ, 3.0, COLORS.DARK, 1.4);
-            for (let x = EX - 1; x <= EX + 1; x++) for (let y = EY + 2; y <= EY + 6; y++) setBlock(map, x, y, EZ + 2, COLORS.LIGHT);
-            for (let x = EX - 1; x <= EX + 1; x++) for (let y = EY + 2; y <= EY + 3; y++) setBlock(map, x, y, EZ - 3, COLORS.WHITE);
-            for (let y = EY + 2; y <= EY + 6; y++) for (let z = EZ - 1; z <= EZ + 2; z++) { setBlock(map, EX - 3, y, z, COLORS.DARK); setBlock(map, EX + 3, y, z, COLORS.DARK); }
-            const HY = EY + 8, HZ = EZ + 1;
-            generateSphere(map, EX, HY, HZ, 2.0, COLORS.WHITE);
-            setBlock(map, EX, HY, HZ + 2, COLORS.GOLD); setBlock(map, EX, HY - 0.5, HZ + 2, COLORS.GOLD);
-            setBlock(map, EX - 1, HY + 0.5, HZ + 1, COLORS.BLACK); setBlock(map, EX + 1, HY + 0.5, HZ + 1, COLORS.BLACK);
-            setBlock(map, EX - 1, EY, EZ, COLORS.TALON); setBlock(map, EX + 1, EY, EZ, COLORS.TALON);
-        }
-        buildMiniEagle(-10, 2, false);
-        buildMiniEagle(10, -2, true);
         return Array.from(map.values());
     }
 };

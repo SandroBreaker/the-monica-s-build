@@ -80,8 +80,6 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
     }
   }, [isGenerating]);
   
-  const isEagle = currentBaseModel === 'Eagle';
-
   return (
     <div className="absolute top-0 left-0 w-full h-full pointer-events-none select-none overflow-hidden">
       
@@ -110,7 +108,8 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                 <div className="h-0.5 bg-black my-2" />
                 
                 <div className="px-2 py-1 text-xs font-black text-slate-400 uppercase tracking-wider">EXTRAS</div>
-                <DropdownItem onClick={() => onNewScene('Eagle')} icon={<Bird size={20}/>} label="Águia" />
+                <DropdownItem onClick={() => onNewScene('Cat')} icon={<Cat size={20}/>} label="Gato" />
+                <DropdownItem onClick={() => onNewScene('Rabbit')} icon={<Rabbit size={20}/>} label="Coelho" />
                 <DropdownItem onClick={onPromptCreate} icon={<Wand2 size={20}/>} label="Criar Novo (IA)" highlight />
                 
                 {customBuilds.length > 0 && (

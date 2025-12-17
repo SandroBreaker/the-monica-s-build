@@ -34,7 +34,8 @@ const App: React.FC = () => {
   const [isAutoRotate, setIsAutoRotate] = useState(true);
 
   // --- State for Custom Models ---
-  const [currentBaseModel, setCurrentBaseModel] = useState<string>('Eagle');
+  // Default changed to Monica since Eagle is removed
+  const [currentBaseModel, setCurrentBaseModel] = useState<string>('Monica');
   const [currentModelData, setCurrentModelData] = useState<VoxelData[]>([]);
   const [customBuilds, setCustomBuilds] = useState<SavedModel[]>([]);
   const [customRebuilds, setCustomRebuilds] = useState<SavedModel[]>([]);
@@ -54,8 +55,8 @@ const App: React.FC = () => {
 
     engineRef.current = engine;
 
-    // Initial Model Load
-    const initialData = Generators.Eagle();
+    // Initial Model Load - Changed to Monica
+    const initialData = Generators.Monica();
     engine.loadInitialModel(initialData);
     setCurrentModelData(initialData);
 
@@ -297,7 +298,7 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="relative w-full h-screen bg-[#87CEEB] overflow-hidden font-sans">
+    <div className="relative w-full h-full bg-[#87CEEB] overflow-hidden font-sans fixed inset-0">
       {/* 3D Container */}
       <div ref={containerRef} className="absolute inset-0 z-0" />
       
