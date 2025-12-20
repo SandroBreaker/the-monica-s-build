@@ -5,7 +5,7 @@
 */
 
 import React from 'react';
-import { Play, Trophy, Users, Gamepad2 } from 'lucide-react';
+import { Trophy, Users } from 'lucide-react';
 import { GameMode } from '../types';
 
 interface MainMenuProps {
@@ -28,48 +28,33 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onSelectMode }) => {
                     </h1>
                 </div>
 
-                <div className="flex flex-col gap-5 w-80 mx-auto">
+                <div className="flex flex-col gap-6 w-80 mx-auto">
                     <button
                         onClick={() => onSelectMode('CHALLENGE')}
-                        className="group relative bg-yellow-400 hover:bg-yellow-300 border-4 border-black rounded-2xl p-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-2 active:translate-y-2 transition-all"
+                        className="group relative bg-yellow-400 hover:bg-yellow-300 border-4 border-black rounded-2xl p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-2 active:translate-y-2 transition-all"
                     >
                         <div className="flex items-center gap-4">
                             <div className="bg-white border-2 border-black rounded-full p-3 group-hover:scale-110 transition-transform">
-                                <Trophy size={28} strokeWidth={3} className="text-yellow-500" />
+                                <Trophy size={32} strokeWidth={3} className="text-yellow-500" />
                             </div>
                             <div className="text-left">
-                                <div className="text-xl font-black text-black uppercase italic">Modo Desafio</div>
-                                <div className="text-[10px] font-bold text-black/60 uppercase tracking-wider">3D: Resgate os Personagens</div>
-                            </div>
-                        </div>
-                    </button>
-
-                    <button
-                        onClick={() => onSelectMode('ADVENTURE_2D')}
-                        className="group relative bg-red-600 hover:bg-red-500 border-4 border-black rounded-2xl p-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-2 active:translate-y-2 transition-all"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="bg-white border-2 border-black rounded-full p-3 group-hover:scale-110 transition-transform">
-                                <Gamepad2 size={28} strokeWidth={3} className="text-red-600" />
-                            </div>
-                            <div className="text-left">
-                                <div className="text-xl font-black text-white uppercase italic">Aventura 2D</div>
-                                <div className="text-[10px] font-bold text-white/60 uppercase tracking-wider">Novo: Plataforma Retrô</div>
+                                <div className="text-2xl font-black text-black uppercase italic">Jogar</div>
+                                <div className="text-xs font-bold text-black/60 uppercase tracking-wider">Modo Desafio 3D</div>
                             </div>
                         </div>
                     </button>
 
                     <button
                         onClick={() => onSelectMode('FREE')}
-                        className="group relative bg-white hover:bg-slate-50 border-4 border-black rounded-2xl p-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-2 active:translate-y-2 transition-all"
+                        className="group relative bg-white hover:bg-slate-50 border-4 border-black rounded-2xl p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-2 active:translate-y-2 transition-all"
                     >
                         <div className="flex items-center gap-4">
                             <div className="bg-blue-100 border-2 border-black rounded-full p-3 group-hover:scale-110 transition-transform">
-                                <Users size={28} strokeWidth={3} className="text-blue-500" />
+                                <Users size={32} strokeWidth={3} className="text-blue-500" />
                             </div>
                             <div className="text-left">
-                                <div className="text-xl font-black text-black uppercase italic">Modo Livre</div>
-                                <div className="text-[10px] font-bold text-black/60 uppercase tracking-wider">3D: Tudo Liberado</div>
+                                <div className="text-2xl font-black text-black uppercase italic">Modo Livre</div>
+                                <div className="text-xs font-bold text-black/60 uppercase tracking-wider">Criação Ilimitada</div>
                             </div>
                         </div>
                     </button>

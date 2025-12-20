@@ -14,7 +14,7 @@ export enum AppState {
   COLLECTING = 'COLLECTING'
 }
 
-export type GameMode = 'MENU' | 'FREE' | 'CHALLENGE' | 'ADVENTURE_2D';
+export type GameMode = 'MENU' | 'FREE' | 'CHALLENGE';
 
 export interface LevelConfig {
   id: number;

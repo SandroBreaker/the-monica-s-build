@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-
 import React, { useEffect, useRef, useState } from 'react';
 import { VoxelEngine } from './services/VoxelEngine';
 import { UIOverlay } from './components/UIOverlay';
@@ -13,7 +12,6 @@ import { PromptModal } from './components/PromptModal';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { MainMenu } from './components/MainMenu';
 import { LevelIntroModal } from './components/LevelIntroModal';
-import { Game2DView } from './components/Game2DView';
 import { Generators } from './utils/voxelGenerators';
 import { GAME_LEVELS } from './utils/levels';
 import { AppState, VoxelData, SavedModel, GameMode } from './types';
@@ -56,8 +54,8 @@ const App: React.FC = () => {
   const [collectedCount, setCollectedCount] = useState(0);
 
   useEffect(() => {
-    // Only init 3D engine if not in 2D mode
-    if (gameMode === 'ADVENTURE_2D' || gameMode === 'MENU') return;
+    // 3D engine is only needed for FREE or CHALLENGE modes
+    if (gameMode === 'MENU') return;
     if (!containerRef.current) return;
 
     // Initialize Engine
@@ -113,6 +111,7 @@ const App: React.FC = () => {
       window.removeEventListener('touchmove', handleInputMove);
       window.removeEventListener('touchstart', handleInputMove);
       engine.cleanup();
+      engineRef.current = null;
     };
   }, [gameMode]); 
 
@@ -165,6 +164,11 @@ const App: React.FC = () => {
       if (Generators[type as keyof typeof Generators] && engineRef.current) {
           const data = Generators[type as keyof typeof Generators]();
           engineRef.current.loadInitialModel(data);
+          setCurrentModelData(data);
+          setCurrentBaseModel(type);
+      } else if (Generators[type as keyof typeof Generators]) {
+          // If engine not ready yet, store data for the useEffect
+          const data = Generators[type as keyof typeof Generators]();
           setCurrentModelData(data);
           setCurrentBaseModel(type);
       }
@@ -278,14 +282,9 @@ const App: React.FC = () => {
   return (
     <div className="relative w-full h-full bg-[#87CEEB] overflow-hidden font-sans fixed inset-0 touch-none">
       
-      {/* 3D Container (Only if not in 2D mode) */}
-      {gameMode !== 'ADVENTURE_2D' && (
+      {/* 3D Container */}
+      {gameMode !== 'MENU' && (
           <div ref={containerRef} className="absolute inset-0 z-0 cursor-crosshair" />
-      )}
-
-      {/* 2D Mode */}
-      {gameMode === 'ADVENTURE_2D' && (
-          <Game2DView onBack={() => setGameMode('MENU')} />
       )}
       
       {/* Main Menu */}
@@ -294,7 +293,7 @@ const App: React.FC = () => {
       )}
 
       {/* Game UI */}
-      {gameMode !== 'MENU' && gameMode !== 'ADVENTURE_2D' && (
+      {gameMode !== 'MENU' && (
           <UIOverlay 
             voxelCount={voxelCount}
             appState={appState}
