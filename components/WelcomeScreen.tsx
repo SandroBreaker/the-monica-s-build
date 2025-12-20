@@ -17,20 +17,20 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ visible }) => {
         transition-all duration-500 ease-out transform font-sans
         ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8'}
     `}>
-      <div className="text-center flex flex-col items-center gap-4 bg-slate-50/80 backdrop-blur-md p-8 rounded-3xl border border-slate-200 shadow-lg">
+      <div className="text-center flex flex-col items-center gap-4 bg-white/90 backdrop-blur-md p-8 rounded-[2rem] border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transform rotate-1">
         <div>
-            <h1 className="text-4xl font-black text-slate-800 uppercase tracking-widest mb-2">
-                Voxel Toy Box
+            <h1 className="text-5xl font-black text-red-600 uppercase tracking-wide mb-2 drop-shadow-sm stroke-black" style={{ textShadow: '2px 2px 0 #000' }}>
+                Turma dos Blocos
             </h1>
-            <div className="text-sm font-extrabold text-indigo-600 uppercase tracking-[0.3em]">
+            <div className="text-xs font-black text-blue-600 uppercase tracking-[0.3em] bg-yellow-300 inline-block px-3 py-1 rounded-full border-2 border-black">
                 Powered by Gemini 3
             </div>
         </div>
         
-        <div className="space-y-3 mt-2">
-            <p className="text-lg font-bold text-slate-700">Build amazing voxel models</p>
-            <p className="text-lg font-bold text-slate-700">Break them down and rebuild them</p>
-            <p className="text-lg font-bold text-slate-700">Share your creations with friends</p>
+        <div className="space-y-2 mt-4">
+            <p className="text-xl font-black text-slate-800 italic">Construa modelos incríveis</p>
+            <p className="text-xl font-black text-slate-800 italic">Derrube tudo e remonte</p>
+            <p className="text-xl font-black text-slate-800 italic">Divirta-se com a turma!</p>
         </div>
       </div>
     </div>

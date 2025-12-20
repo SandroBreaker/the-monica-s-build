@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aventura no Limoeiro 2.0</title>
+    <style>
+        /* --- CSS Reset & Layout --- */
+        * { box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #222; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Container do Jogo */
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F7FA 100%); /* Céu */
+        }
+
+        canvas {
+            display: block;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            background: transparent;
+        }
+
+        /* --- UI Overlay (HUD, Menus) --- */
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Deixa cliques passarem para o canvas/controles */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hud-panel {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        /* --- Telas de Estado (Start, Game Over) --- */
+        .modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+            pointer-events: auto;
+            transition: opacity 0.3s;
+        }
+        
+        .modal.hidden { opacity: 0; pointer-events: none; }
+
+        h1 { font-size: 40px; margin-bottom: 10px; color: #E53935; text-shadow: 2px 2px 0 #fff; }
+        p { font-size: 18px; margin-bottom: 20px; text-align: center; max-width: 600px; line-height: 1.5; }
+        
+        .btn {
+            background: #E53935;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #B71C1C;
+            transition: transform 0.1s;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .btn:active { transform: translateY(4px); box-shadow: 0 0 0 #B71C1C; }
+
+        /* --- Controles Mobile --- */
+        #mobile-controls {
+            display: none; /* Ativado via JS se for touch */
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            height: 120px;
+            padding: 0 20px;
+            pointer-events: none; /* Botões internos capturam eventos */
+            z-index: 50;
+        }
+
+        .d-pad, .action-pad {
+            position: absolute;
+            bottom: 10px;
+            pointer-events: auto;
+        }
+        .d-pad { left: 20px; display: flex; gap: 15px; }
+        .action-pad { right: 20px; display: flex; gap: 20px; }
+
+        .control-btn {
+            width: 60px; height: 60px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            backdrop-filter: blur(4px);
+            touch-action: none;
+        }
+        .control-btn.active { background: rgba(255, 255, 255, 0.6); transform: scale(0.95); }
+        .btn-large { width: 70px; height: 70px; background: rgba(229, 57, 53, 0.4); border-color: #E53935; }
+
+        @media (hover: none) and (pointer: coarse) {
+            #mobile-controls { display: block; }
+            .hide-mobile { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui-layer">
+        <div class="hud-panel">
+            <span id="score-display">🍉 0</span>
+            <span id="lives-display">❤️ 3</span>
+        </div>
+        
+        <div id="mobile-controls">
+            <div class="d-pad">
+                <div class="control-btn" id="btn-left">⬅️</div>
+                <div class="control-btn" id="btn-right">➡️</div>
+            </div>
+            <div class="action-pad">
+                <div class="control-btn btn-large" id="btn-attack">🐰</div>
+                <div class="control-btn btn-large" id="btn-jump">⬆️</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tela Inicial -->
+    <div id="start-screen" class="modal">
+        <h1>Aventura no Limoeiro 2.0</h1>
+        <p>Ajude a Mônica a recuperar as melancias e derrotar os meninos!</p>
+        <p class="hide-mobile">Use <strong>Setas</strong> para mover, <strong>Z</strong> para atacar (Sansão), <strong>Espaço</strong> para pular.</p>
+        <p>Colete 🍉 para ganhar pontos. Pule na cabeça ou use o Sansão para derrotar inimigos.</p>
+        <button class="btn" onclick="game.start()">Começar Aventura</button>
+    </div>
+
+    <!-- Game Over -->
+    <div id="game-over-screen" class="modal hidden">
+        <h1>Fim de Jogo!</h1>
+        <p id="final-score-text">Pontuação: 0</p>
+        <button class="btn" onclick="game.reset()">Tentar Novamente</button>
+    </div>
+    
+    <!-- Vitória -->
+    <div id="win-screen" class="modal hidden">
+        <h1 style="color: #4CAF50;">Vitória!</h1>
+        <p>Você recuperou o Limoeiro!</p>
+        <p id="win-score-text">Pontuação: 0</p>
+        <button class="btn" onclick="game.reset()">Jogar de Novo</button>
+    </div>
+</div>
+
+<script>
+/**
+ * AUDIO ENGINE
+ * Sintetizador simples para evitar carregar assets externos.
+ */
+class SoundManager {
+    constructor() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.enabled = true;
+    }
+
+    playTone(freq, type, duration, vol = 0.1) {
+        if (!this.enabled || this.ctx.state === 'suspended') this.ctx.resume();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    }
+
+    jump() { this.playTone(400, 'sine', 0.3); }
+    attack() { this.playTone(150, 'sawtooth', 0.1, 0.05); } // Som de "woosh"
+    coin() { this.playTone(1200, 'square', 0.1, 0.05); this.playTone(1800, 'square', 0.2, 0.05); }
+    hit() { this.playTone(100, 'sawtooth', 0.3, 0.2); }
+    enemyDeath() { this.playTone(200, 'square', 0.1); }
+}
+
+/**
+ * INPUT ENGINE
+ * Abstração para Teclado e Touch.
+ */
+class InputHandler {
+    constructor() {
+        this.keys = { left: false, right: false, up: false, attack: false };
+        this.bindKeyboard();
+        this.bindTouch();
+    }
+
+    bindKeyboard() {
+        window.addEventListener('keydown', e => this.handleKey(e, true));
+        window.addEventListener('keyup', e => this.handleKey(e, false));
+    }
+
+    handleKey(e, isDown) {
+        if(e.repeat) return;
+        const code = e.code;
+        if (code === 'ArrowLeft' || code === 'KeyA') this.keys.left = isDown;
+        if (code === 'ArrowRight' || code === 'KeyD') this.keys.right = isDown;
+        if (code === 'ArrowUp' || code === 'Space') this.keys.up = isDown;
+        if (code === 'KeyZ' || code === 'KeyK') this.keys.attack = isDown;
+    }
+
+    bindTouch() {
+        const bindBtn = (id, key) => {
+            const el = document.getElementById(id);
+            el.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys[key] = true; el.classList.add('active'); });
+            el.addEventListener('touchend', (e) => { e.preventDefault(); this.keys[key] = false; el.classList.remove('active'); });
+        };
+        bindBtn('btn-left', 'left');
+        bindBtn('btn-right', 'right');
+        bindBtn('btn-jump', 'up');
+        bindBtn('btn-attack', 'attack');
+    }
+}
+
+/**
+ * PHYSICS & ENTITIES
+ */
+class Entity {
+    constructor(x, y, w, h) {
+        this.x = x; this.y = y; this.w = w; this.h = h;
+        this.vx = 0; this.vy = 0;
+        this.markedForDeletion = false;
+    }
+    
+    get cx() { return this.x + this.w / 2; }
+    get cy() { return this.y + this.h / 2; }
+
+    checkCollision(other) {
+        return (this.x < other.x + other.w && this.x + this.w > other.x &&
+                this.y < other.y + other.h && this.y + this.h > other.y);
+    }
+}
+
+class Particle extends Entity {
+    constructor(x, y, color) {
+        super(x, y, Math.random() * 4 + 2, Math.random() * 4 + 2);
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10;
+        this.life = 1.0;
+        this.color = color;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= 0.05;
+        if (this.life <= 0) this.markedForDeletion = true;
+    }
+    draw(ctx, camX) {
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.life;
+        ctx.fillRect(this.x - camX, this.y, this.w, this.h);
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+class Player extends Entity {
+    constructor(x, y) {
+        super(x, y, 40, 60);
+        this.speed = 5;
+        this.jumpForce = -14;
+        this.grounded = false;
+        this.facingRight = true;
+        this.isAttacking = false;
+        this.attackTimer = 0;
+        this.invulnerable = 0;
+        this.sansaoAngle = 0;
+        this.lives = 3;
+        this.color = '#E53935'; // Vermelho Mônica
+    }
+
+    update(input, map, enemies, particles, audio) {
+        // Movimento X
+        if (input.keys.left) { this.vx = -this.speed; this.facingRight = false; }
+        else if (input.keys.right) { this.vx = this.speed; this.facingRight = true; }
+        else { this.vx *= 0.8; } // Atrito
+
+        this.x += this.vx;
+        this.handleMapCollision(map, 'x');
+
+        // Movimento Y (Gravidade)
+        this.vy += 0.8; 
+        this.y += this.vy;
+        this.grounded = false;
+        this.handleMapCollision(map, 'y');
+
+        // Pulo
+        if (input.keys.up && this.grounded) {
+            this.vy = this.jumpForce;
+            audio.jump();
+            // Cria poeira
+            for(let i=0; i<5; i++) particles.push(new Particle(this.x + this.w/2, this.y + this.h, '#ddd'));
+        }
+
+        // Ataque
+        if (input.keys.attack && !this.isAttacking) {
+            this.isAttacking = true;
+            this.attackTimer = 20; // frames
+            audio.attack();
+        }
+
+        if (this.isAttacking) {
+            this.attackTimer--;
+            this.sansaoAngle += 0.5;
+            
+            // Hitbox do Sansão
+            const reach = 60;
+            const hitX = this.facingRight ? this.x + this.w : this.x - reach;
+            const hitBox = { x: hitX, y: this.y, w: reach, h: this.h };
+            
+            enemies.forEach(e => {
+                if (e.checkCollision(hitBox)) {
+                    e.die(particles, audio);
+                }
+            });
+
+            if (this.attackTimer <= 0) {
+                this.isAttacking = false;
+                this.sansaoAngle = 0;
+            }
+        }
+
+        // Invulnerabilidade
+        if (this.invulnerable > 0) this.invulnerable--;
+
+        // Caindo do mundo
+        if (this.y > 1000) game.loseLife();
+    }
+
+    handleMapCollision(map, axis) {
+        for (let tile of map) {
+            if (this.checkCollision(tile)) {
+                if (axis === 'x') {
+                    if (this.vx > 0) this.x = tile.x - this.w;
+                    else if (this.vx < 0) this.x = tile.x + tile.w;
+                    this.vx = 0;
+                } else {
+                    if (this.vy > 0) { // Caindo
+                        this.y = tile.y - this.h;
+                        this.grounded = true;
+                        this.vy = 0;
+                    } else if (this.vy < 0) { // Batendo cabeça
+                        this.y = tile.y + tile.h;
+                        this.vy = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    draw(ctx, camX) {
+        if (this.invulnerable > 0 && Math.floor(Date.now() / 100) % 2 === 0) return; // Piscar
+
+        const x = this.x - camX;
+        const y = this.y;
+
+        // Corpo (Vestido)
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.moveTo(x + 10, y + 20);
+        ctx.lineTo(x + 30, y + 20);
+        ctx.lineTo(x + 40, y + 60);
+        ctx.lineTo(x, y + 60);
+        ctx.fill();
+
+        // Cabeça
+        ctx.fillStyle = '#FFE0BD'; // Pele
+        ctx.beginPath();
+        ctx.arc(x + 20, y + 15, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cabelo (Banana Shape)
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.ellipse(x + 20, y + 15, 16, 18, 0, Math.PI, 0); // Topo
+        ctx.fill();
+        
+        // Olhos
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(x + 15 + (this.facingRight?4:0), y + 12, 2, 0, Math.PI*2);
+        ctx.arc(x + 25 + (this.facingRight?0:-4), y + 12, 2, 0, Math.PI*2);
+        ctx.fill();
+
+        // Dentuça
+        ctx.fillStyle = 'white';
+        ctx.fillRect(x + 18 + (this.facingRight?2:-2), y + 18, 4, 3);
+
+        // Sansão
+        this.drawSansao(ctx, x, y);
+    }
+
+    drawSansao(ctx, x, y) {
+        ctx.fillStyle = '#2196F3'; // Azul
+        let sx, sy;
+        
+        if (this.isAttacking) {
+            // Girando
+            const offset = this.facingRight ? 40 : -10;
+            sx = x + offset;
+            sy = y + 30 + Math.sin(this.sansaoAngle) * 20;
+            
+            // Rastro
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            ctx.arc(sx - (this.facingRight?10:-10), sy-10, 10, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        } else {
+            // Segurando
+            sx = x + (this.facingRight ? 5 : 35);
+            sy = y + 40;
+        }
+
+        // Cabeça do coelho
+        ctx.beginPath();
+        ctx.arc(sx, sy, 8, 0, Math.PI * 2);
+        ctx.fill();
+        // Orelhas
+        ctx.beginPath();
+        ctx.ellipse(sx - 3, sy - 10, 3, 8, -0.2, 0, Math.PI * 2);
+        ctx.ellipse(sx + 3, sy - 10, 3, 8, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+class Enemy extends Entity {
+    constructor(x, y, type) {
+        super(x, y, 40, 50);
+        this.type = type; // 'cebolinha' ou 'cascao'
+        this.startX = x;
+        this.patrolDist = 100;
+        this.speed = 2;
+        this.dir = 1;
+    }
+
+    update(map) {
+        this.x += this.speed * this.dir;
+        this.vx = this.speed * this.dir;
+
+        // Patrulha simples
+        if (this.x > this.startX + this.patrolDist) this.dir = -1;
+        if (this.x < this.startX - this.patrolDist) this.dir = 1;
+
+        // Gravidade simples
+        this.vy += 0.8;
+        this.y += this.vy;
+        
+        // Colisão Mapa
+        let grounded = false;
+        for (let tile of map) {
+            if (this.checkCollision(tile)) {
+                if (this.y + this.h - this.vy <= tile.y) { // Pousou
+                    this.y = tile.y - this.h;
+                    this.vy = 0;
+                    grounded = true;
+                } else { // Bateu na parede
+                    this.dir *= -1;
+                }
+            }
+        }
+    }
+
+    die(particles, audio) {
+        if (this.markedForDeletion) return;
+        this.markedForDeletion = true;
+        audio.enemyDeath();
+        // Explosão de partículas
+        for(let i=0; i<10; i++) {
+            particles.push(new Particle(this.cx, this.cy, this.type === 'cebolinha' ? '#4CAF50' : '#FFEB3B'));
+        }
+        game.score += 100;
+    }
+
+    draw(ctx, camX) {
+        const x = this.x - camX;
+        const y = this.y;
+
+        // Camisa
+        ctx.fillStyle = this.type === 'cebolinha' ? '#4CAF50' : '#FFEB3B';
+        ctx.fillRect(x + 5, y + 20, 30, 30);
+        
+        // Sujeira do Cascão
+        if (this.type === 'cascao') {
+            ctx.fillStyle = '#795548';
+            ctx.beginPath();
+            ctx.arc(x+10, y+25, 3, 0, Math.PI*2);
+            ctx.arc(x+30, y+40, 2, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        // Cabeça
+        ctx.fillStyle = '#FFE0BD';
+        ctx.beginPath();
+        ctx.arc(x + 20, y + 15, 14, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cabelo
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        if (this.type === 'cebolinha') {
+            // 5 Fios
+            ctx.moveTo(x+20, y); ctx.lineTo(x+20, y-10);
+            ctx.moveTo(x+15, y+2); ctx.lineTo(x+10, y-5);
+            ctx.moveTo(x+25, y+2); ctx.lineTo(x+30, y-5);
+            ctx.stroke();
+        } else {
+            // Bagunçado
+            ctx.arc(x + 20, y + 10, 14, Math.PI, 0);
+            ctx.fill();
+        }
+        
+        // Calça preta
+        ctx.fillStyle = 'black';
+        ctx.fillRect(x+10, y+50, 20, 10);
+    }
+}
+
+class Collectible extends Entity {
+    constructor(x, y) {
+        super(x, y, 30, 30);
+        this.bobOffset = Math.random() * Math.PI * 2;
+    }
+    
+    update() {
+        this.bobOffset += 0.1;
+    }
+
+    draw(ctx, camX) {
+        const y = this.y + Math.sin(this.bobOffset) * 5;
+        const x = this.x - camX;
+        
+        // Melancia
+        ctx.fillStyle = '#2E7D32'; // Casca verde escuro
+        ctx.beginPath();
+        ctx.arc(x + 15, y + 15, 12, 0, Math.PI*2);
+        ctx.fill();
+        
+        ctx.fillStyle = '#EF5350'; // Dentro vermelho
+        ctx.beginPath();
+        ctx.arc(x + 15, y + 15, 10, 0, Math.PI*2); // Slice logic simplified for readability
+        ctx.fill();
+
+        // Sementes
+        ctx.fillStyle = 'black';
+        ctx.fillRect(x+12, y+10, 2, 2);
+        ctx.fillRect(x+18, y+14, 2, 2);
+        ctx.fillRect(x+14, y+20, 2, 2);
+    }
+}
+
+/**
+ * MAIN GAME CONTROLLER
+ */
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d', { alpha: false }); // Optimization
+        this.audio = new SoundManager();
+        this.input = new InputHandler();
+        
+        this.state = 'start'; // start, playing, gameover, win
+        this.score = 0;
+        
+        this.player = null;
+        this.entities = [];
+        this.particles = [];
+        this.map = [];
+        this.camX = 0;
+        this.levelWidth = 0;
+
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        
+        // Mapa: # = chão, P = player, C = cebolinha, K = cascão, M = melancia, = = plataforma
+        this.levelData = [
+            "                                                                                ",
+            "                                                                                ",
+            "                                                                                ",
+            "       M     M                                   M  M     C                     ",
+            "      ===   ===                                 ======   ===                    ",
+            " M                     C          M     K                                       ",
+            "===                  =====       ===   ===    =======              M     M      ",
+            "         C      M                                       M         ===   ===     ",
+            "       =====   ===                                     ===                      ",
+            "  P                                       M     M               C       K     F ",
+            "###################  #######   #####################   #########################"
+        ];
+        
+        this.loop = this.loop.bind(this);
+        requestAnimationFrame(this.loop);
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+
+    initLevel() {
+        this.entities = [];
+        this.map = [];
+        this.particles = [];
+        this.score = 0;
+        
+        const tileSize = 60;
+        
+        this.levelData.forEach((row, rowIndex) => {
+            for (let colIndex = 0; colIndex < row.length; colIndex++) {
+                const char = row[colIndex];
+                const x = colIndex * tileSize;
+                const y = rowIndex * tileSize;
+                
+                if (char === '#') this.map.push({x, y, w: tileSize, h: tileSize, type: 'ground'});
+                if (char === '=') this.map.push({x, y, w: tileSize, h: 20, type: 'plat'});
+                if (char === 'P') this.player = new Player(x, y);
+                if (char === 'C') this.entities.push(new Enemy(x, y, 'cebolinha'));
+                if (char === 'K') this.entities.push(new Enemy(x, y, 'cascao'));
+                if (char === 'M') this.entities.push(new Collectible(x, y + 15));
+                if (char === 'F') this.flagX = x; // Fim da fase
+            }
+        });
+        
+        this.levelWidth = this.levelData[0].length * tileSize;
+        
+        // Fix: Update HUD AFTER player is created
+        if (this.player) {
+            this.updateHUD();
+        }
+    }
+
+    start() {
+        this.initLevel();
+        this.state = 'playing';
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('game-over-screen').classList.add('hidden');
+        document.getElementById('win-screen').classList.add('hidden');
+    }
+
+    reset() {
+        this.start();
+    }
+
+    loseLife() {
+        this.player.lives--;
+        this.updateHUD();
+        this.audio.hit();
+        
+        if (this.player.lives <= 0) {
+            this.state = 'gameover';
+            document.getElementById('final-score-text').innerText = `Pontuação: ${this.score}`;
+            document.getElementById('game-over-screen').classList.remove('hidden');
+        } else {
+            // Respawn simples (volta pro inicio ou checkpoint lógico)
+            this.player.x = 100;
+            this.player.y = 100;
+            this.player.vy = 0;
+            this.player.invulnerable = 60; // 1s
+        }
+    }
+
+    updateHUD() {
+        document.getElementById('score-display').innerText = `🍉 ${this.score}`;
+        let hearts = '';
+        for(let i=0; i<this.player.lives; i++) hearts += '❤️';
+        document.getElementById('lives-display').innerText = hearts;
+    }
+
+    win() {
+        this.state = 'win';
+        document.getElementById('win-score-text').innerText = `Pontuação Final: ${this.score}`;
+        document.getElementById('win-screen').classList.remove('hidden');
+    }
+
+    update() {
+        if (this.state !== 'playing') return;
+
+        // Player
+        this.player.update(this.input, this.map, this.entities.filter(e => e instanceof Enemy), this.particles, this.audio);
+
+        // Entities (Inimigos e Melancias)
+        this.entities.forEach(ent => {
+            if (ent instanceof Enemy) {
+                ent.update(this.map);
+                // Colisão Player vs Enemy
+                if (!ent.markedForDeletion && this.player.checkCollision(ent)) {
+                    // Mário style jump
+                    if (this.player.vy > 0 && this.player.y + this.player.h - 10 < ent.y + ent.h/2) {
+                        ent.die(this.particles, this.audio);
+                        this.player.vy = -8; // Bounce
+                    } else if (this.player.invulnerable <= 0) {
+                        this.loseLife();
+                    }
+                }
+            } else if (ent instanceof Collectible) {
+                ent.update();
+                if (this.player.checkCollision(ent)) {
+                    ent.markedForDeletion = true;
+                    this.score += 50;
+                    this.updateHUD();
+                    this.audio.coin();
+                    // Particulas verdes
+                    for(let i=0; i<5; i++) this.particles.push(new Particle(ent.cx, ent.cy, '#4CAF50'));
+                }
+            }
+        });
+
+        // Limpeza
+        this.entities = this.entities.filter(e => !e.markedForDeletion);
+        
+        // Partículas
+        this.particles.forEach(p => p.update());
+        this.particles = this.particles.filter(p => !p.markedForDeletion);
+
+        // Câmera
+        const targetCamX = this.player.x - this.canvas.width / 2;
+        // Smooth lerp
+        this.camX += (targetCamX - this.camX) * 0.1;
+        // Clamp
+        this.camX = Math.max(0, Math.min(this.camX, this.levelWidth - this.canvas.width));
+
+        // Win Condition
+        if (this.player.x > this.flagX) this.win();
+    }
+
+    draw() {
+        // Limpar Fundo
+        // Fundo degradê já feito via CSS, limpamos apenas para transparência se necessário ou desenhar elementos de fundo
+        this.ctx.fillStyle = '#87CEEB';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Nuvens (Decorativo - Parallax Simples)
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        for(let i=0; i<10; i++) {
+            let cx = (i * 300 - (this.camX * 0.5)) % (this.levelWidth + 1000);
+            if (cx < -200) cx += this.levelWidth; 
+            this.ctx.beginPath();
+            this.ctx.arc(cx, 100 + (i%3)*50, 40, 0, Math.PI*2);
+            this.ctx.arc(cx+50, 110 + (i%3)*50, 50, 0, Math.PI*2);
+            this.ctx.fill();
+        }
+
+        this.ctx.save();
+        
+        // Desenhar Mapa
+        this.ctx.fillStyle = '#8D6E63'; // Terra
+        this.map.forEach(tile => {
+            if (tile.x - this.camX > this.canvas.width || tile.x + tile.w - this.camX < 0) return; // Culling
+            
+            if (tile.type === 'ground') {
+                this.ctx.fillStyle = '#5D4037';
+                this.ctx.fillRect(tile.x - this.camX, tile.y, tile.w, tile.h);
+                // Grama no topo
+                this.ctx.fillStyle = '#43A047';
+                this.ctx.fillRect(tile.x - this.camX, tile.y, tile.w, 10);
+            } else { // Plat
+                this.ctx.fillStyle = '#8D6E63';
+                this.ctx.fillRect(tile.x - this.camX, tile.y, tile.w, tile.h);
+            }
+        });
+
+        // Desenhar Entidades
+        this.entities.forEach(ent => ent.draw(this.ctx, this.camX));
+        
+        // Desenhar Jogador
+        if (this.player) this.player.draw(this.ctx, this.camX);
+
+        // Partículas
+        this.particles.forEach(p => p.draw(this.ctx, this.camX));
+
+        // Bandeira de Fim
+        if (this.flagX) {
+            const fx = this.flagX - this.camX;
+            this.ctx.fillStyle = '#fff';
+            this.ctx.fillRect(fx, 200, 5, 400); // Mastro
+            this.ctx.fillStyle = 'yellow';
+            this.ctx.beginPath();
+            this.ctx.moveTo(fx, 200);
+            this.ctx.lineTo(fx+60, 230);
+            this.ctx.lineTo(fx, 260);
+            this.ctx.fill();
+        }
+
+        this.ctx.restore();
+    }
+
+    loop() {
+        this.update();
+        this.draw();
+        requestAnimationFrame(this.loop);
+    }
+}
+
+// Inicialização Global
+const game = new Game();
+
+</script>
+</body>
+</html>

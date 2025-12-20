@@ -42,7 +42,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({ isOpen, mode, onClose,
       onClose();
     } catch (err) {
       console.error(err);
-      setError('The magic failed! Please try again.');
+      setError('A mágica falhou! Tente de novo.');
     } finally {
       setIsLoading(false);
     }
@@ -58,26 +58,26 @@ export const PromptModal: React.FC<PromptModalProps> = ({ isOpen, mode, onClose,
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 font-sans">
-      <div className={`bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col border-4 ${isCreate ? 'border-sky-100' : 'border-amber-100'} animate-in fade-in zoom-in duration-200 scale-95 sm:scale-100 overflow-hidden`}>
+      <div className={`bg-white rounded-[2rem] shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-lg flex flex-col border-4 border-black ${isCreate ? 'border-black' : 'border-black'} animate-in fade-in zoom-in duration-200 scale-95 sm:scale-100 overflow-hidden`}>
         
         {/* Header */}
-        <div className={`flex items-center justify-between p-6 border-b ${isCreate ? 'border-sky-50 bg-gradient-to-r from-sky-50 to-blue-50' : 'border-amber-50 bg-gradient-to-r from-amber-50 to-orange-50'}`}>
+        <div className={`flex items-center justify-between p-6 border-b-4 border-black ${isCreate ? 'bg-sky-50' : 'bg-amber-50'}`}>
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl ${themeLight} ${themeText}`}>
+            <div className={`p-2 rounded-xl border-2 border-black ${themeLight} ${themeText}`}>
                 {isCreate ? <Wand2 size={24} strokeWidth={2.5} /> : <Hammer size={24} strokeWidth={2.5} />}
             </div>
             <div>
-                <h2 className="text-xl font-extrabold text-slate-800">
-                    {isCreate ? 'New Build' : 'Rebuild blocks'}
+                <h2 className="text-xl font-black text-slate-900 uppercase">
+                    {isCreate ? 'Novo Modelo' : 'Transformar'}
                 </h2>
-                <p className={`text-xs font-bold uppercase tracking-wide ${isCreate ? 'text-sky-400' : 'text-amber-400'}`}>
+                <p className={`text-xs font-bold uppercase tracking-wide ${isCreate ? 'text-sky-500' : 'text-amber-500'}`}>
                     POWERED BY GEMINI 3
                 </p>
             </div>
           </div>
           <button 
             onClick={!isLoading ? onClose : undefined}
-            className="p-2 rounded-xl bg-white/50 text-slate-400 hover:bg-white hover:text-slate-700 transition-colors disabled:opacity-50"
+            className="p-2 rounded-xl bg-white border-2 border-black text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50"
             disabled={isLoading}
           >
             <X size={24} strokeWidth={3} />
@@ -86,10 +86,10 @@ export const PromptModal: React.FC<PromptModalProps> = ({ isOpen, mode, onClose,
 
         {/* Body */}
         <div className="p-6 bg-white">
-          <p className="text-slate-600 font-semibold mb-4">
+          <p className="text-slate-800 font-bold mb-4">
             {isCreate 
-                ? "What new creation should we build?" 
-                : "How should we rebuild the current voxels?"}
+                ? "O que vamos construir hoje?" 
+                : "No que vamos transformar esses blocos?"}
           </p>
           
           <form onSubmit={handleSubmit}>
@@ -97,15 +97,15 @@ export const PromptModal: React.FC<PromptModalProps> = ({ isOpen, mode, onClose,
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder={isCreate 
-                ? "e.g., A medieval castle, a giant robot, a fruit basket..." 
-                : "e.g., Turn it into a car, make a pyramid, build a smiley face..."}
+                ? "ex: Um castelo medieval, um robô gigante, uma cesta de frutas..." 
+                : "ex: Transforme em um carro, faça uma pirâmide, vire um coelho..."}
               disabled={isLoading}
-              className={`w-full h-32 resize-none bg-slate-50 border-2 border-slate-200 rounded-xl p-4 font-medium text-slate-700 focus:outline-none focus:ring-4 transition-all placeholder:text-slate-400 mb-4 ${isCreate ? 'focus:border-sky-400 focus:ring-sky-100' : 'focus:border-amber-400 focus:ring-amber-100'}`}
+              className={`w-full h-32 resize-none bg-slate-50 border-4 border-slate-200 rounded-xl p-4 font-bold text-slate-700 focus:outline-none focus:ring-0 focus:border-black transition-all placeholder:text-slate-400 mb-4`}
               autoFocus
             />
 
             {error && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 text-rose-600 text-sm font-bold flex items-center gap-2">
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border-2 border-rose-200 text-rose-600 text-sm font-bold flex items-center gap-2">
                 <X size={16} /> {error}
               </div>
             )}
@@ -115,21 +115,21 @@ export const PromptModal: React.FC<PromptModalProps> = ({ isOpen, mode, onClose,
                 type="submit"
                 disabled={!prompt.trim() || isLoading}
                 className={`
-                  flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white text-sm transition-all
+                  flex items-center gap-2 px-6 py-3 rounded-xl font-black text-white text-sm transition-all border-4 border-black
                   ${isLoading 
-                    ? 'bg-slate-200 text-slate-400 cursor-wait' 
-                    : `${themeBg} ${themeHover} shadow-lg active:scale-95`}
+                    ? 'bg-slate-200 text-slate-400 cursor-wait border-slate-400' 
+                    : `${themeBg} ${themeHover} shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1`}
                 `}
               >
                 {isLoading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    Thinking...
+                    Pensando...
                   </>
                 ) : (
                   <>
                     <Sparkles size={18} fill="currentColor" />
-                    Generate
+                    Gerar!
                   </>
                 )}
               </button>

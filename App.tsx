@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -10,84 +11,167 @@ import { UIOverlay } from './components/UIOverlay';
 import { JsonModal } from './components/JsonModal';
 import { PromptModal } from './components/PromptModal';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { MainMenu } from './components/MainMenu';
+import { LevelIntroModal } from './components/LevelIntroModal';
+import { Game2DView } from './components/Game2DView';
 import { Generators } from './utils/voxelGenerators';
-import { AppState, VoxelData, SavedModel } from './types';
+import { GAME_LEVELS } from './utils/levels';
+import { AppState, VoxelData, SavedModel, GameMode } from './types';
 import { GoogleGenAI, Type } from "@google/genai";
 
 const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<VoxelEngine | null>(null);
   
+  // Game State
+  const [gameMode, setGameMode] = useState<GameMode>('MENU');
   const [appState, setAppState] = useState<AppState>(AppState.STABLE);
   const [voxelCount, setVoxelCount] = useState<number>(0);
   
+  // Challenge Mode State
+  const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
+  const [showLevelIntro, setShowLevelIntro] = useState(false);
+  const [isLevelComplete, setIsLevelComplete] = useState(false);
+
+  // Modals
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [jsonModalMode, setJsonModalMode] = useState<'view' | 'import'>('view');
-  
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [promptMode, setPromptMode] = useState<'create' | 'morph'>('create');
   
-  const [showWelcome, setShowWelcome] = useState(true);
+  // UI Helpers
+  const [showWelcome, setShowWelcome] = useState(false); 
   const [isGenerating, setIsGenerating] = useState(false);
-  
   const [jsonData, setJsonData] = useState('');
   const [isAutoRotate, setIsAutoRotate] = useState(true);
 
-  // --- State for Custom Models ---
-  // Default changed to Monica since Eagle is removed
+  // Data
   const [currentBaseModel, setCurrentBaseModel] = useState<string>('Monica');
   const [currentModelData, setCurrentModelData] = useState<VoxelData[]>([]);
   const [customBuilds, setCustomBuilds] = useState<SavedModel[]>([]);
   const [customRebuilds, setCustomRebuilds] = useState<SavedModel[]>([]);
 
-  // --- State for Manual Rebuild Game ---
+  // Minigame States
   const [manualProgress, setManualProgress] = useState(0);
+  const [collectedCount, setCollectedCount] = useState(0);
 
   useEffect(() => {
+    // Only init 3D engine if not in 2D mode
+    if (gameMode === 'ADVENTURE_2D' || gameMode === 'MENU') return;
     if (!containerRef.current) return;
 
     // Initialize Engine
     const engine = new VoxelEngine(
       containerRef.current,
-      (newState) => setAppState(newState),
-      (count) => setVoxelCount(count)
+      (newState) => {
+          setAppState(newState);
+          if (newState === AppState.STABLE && gameMode === 'CHALLENGE' && engineRef.current) {
+               setIsLevelComplete(true);
+          }
+      },
+      (count) => {
+          if (engineRef.current && (engineRef.current as any).state === AppState.COLLECTING) {
+             setCollectedCount(count);
+          } else {
+             setVoxelCount(count);
+          }
+      }
     );
-
     engineRef.current = engine;
 
-    // Initial Model Load - Changed to Monica
     const initialData = Generators.Monica();
     engine.loadInitialModel(initialData);
     setCurrentModelData(initialData);
 
-    // Resize Listener
     const handleResize = () => engine.handleResize();
     window.addEventListener('resize', handleResize);
+    
+    const handleInputMove = (e: MouseEvent | TouchEvent) => {
+        if (!engineRef.current) return;
+        let clientX, clientY;
+        if (window.TouchEvent && e instanceof TouchEvent) {
+             if (e.touches.length > 0) {
+                 clientX = e.touches[0].clientX;
+                 clientY = e.touches[0].clientY;
+             } else return;
+        } else {
+             clientX = (e as MouseEvent).clientX;
+             clientY = (e as MouseEvent).clientY;
+        }
+        const x = (clientX / window.innerWidth) * 2 - 1;
+        const y = -(clientY / window.innerHeight) * 2 + 1;
+        engineRef.current.updateMouse(x, y);
+    }
 
-    // Auto-hide welcome screen after interaction
-    const timer = setTimeout(() => setShowWelcome(false), 5000);
+    window.addEventListener('mousemove', handleInputMove);
+    window.addEventListener('touchmove', handleInputMove, { passive: false });
+    window.addEventListener('touchstart', handleInputMove, { passive: false });
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      clearTimeout(timer);
+      window.removeEventListener('mousemove', handleInputMove);
+      window.removeEventListener('touchmove', handleInputMove);
+      window.removeEventListener('touchstart', handleInputMove);
       engine.cleanup();
     };
-  }, []);
+  }, [gameMode]); 
 
-  const handleDismantle = () => {
-    engineRef.current?.dismantle();
+  // --- Mode Switching Logic ---
+
+  const handleSelectMode = (mode: GameMode) => {
+      setGameMode(mode);
+      if (mode === 'CHALLENGE') {
+          setCurrentLevelIndex(0);
+          setIsLevelComplete(false);
+          prepareLevel(0);
+      } else if (mode === 'FREE') {
+          loadCharacter('Monica');
+          setShowWelcome(true);
+          setTimeout(() => setShowWelcome(false), 3000);
+      }
   };
 
-  const handleNewScene = (type: keyof typeof Generators) => {
-    const generator = Generators[type];
-    if (generator && engineRef.current) {
-      const data = generator();
-      engineRef.current.loadInitialModel(data);
-      setCurrentModelData(data);
-      setCurrentBaseModel(type);
-    }
+  const prepareLevel = (index: number) => {
+      if (index >= GAME_LEVELS.length) {
+          alert("VOCÊ SALVOU A TURMA TODA! FIM DE JOGO!");
+          setGameMode('MENU');
+          return;
+      }
+      const level = GAME_LEVELS[index];
+      loadCharacter(level.characterKey);
+      setIsLevelComplete(false);
+      setShowLevelIntro(true);
   };
 
+  const startCurrentLevelGame = () => {
+      setShowLevelIntro(false);
+      if (engineRef.current) {
+          engineRef.current.dismantle();
+          setTimeout(() => {
+              if (engineRef.current) {
+                  setCollectedCount(0);
+                  engineRef.current.startCollectionGame(currentModelData);
+              }
+          }, 600);
+      }
+  }
+
+  const handleNextLevel = () => {
+      setCurrentLevelIndex(prev => prev + 1);
+      prepareLevel(currentLevelIndex + 1);
+  };
+
+  const loadCharacter = (type: string) => {
+      if (Generators[type as keyof typeof Generators] && engineRef.current) {
+          const data = Generators[type as keyof typeof Generators]();
+          engineRef.current.loadInitialModel(data);
+          setCurrentModelData(data);
+          setCurrentBaseModel(type);
+      }
+  }
+
+  const handleDismantle = () => engineRef.current?.dismantle();
+  const handleNewScene = (type: keyof typeof Generators) => loadCharacter(type);
   const handleSelectCustomBuild = (model: SavedModel) => {
       if (engineRef.current) {
           engineRef.current.loadInitialModel(model.data);
@@ -98,32 +182,24 @@ const App: React.FC = () => {
 
   const handleRebuild = (type: string, manualMode: boolean = false) => {
     let data: VoxelData[] | null = null;
-
-    // If rebuilding the current base model, use the stored data (fixes Custom/Imported models)
-    if (type === currentBaseModel && currentModelData.length > 0) {
-        data = currentModelData;
-    } 
-    // Otherwise check if it's a generator key
-    else if (Generators[type as keyof typeof Generators]) {
-        data = Generators[type as keyof typeof Generators]();
-    }
-
+    if (type === currentBaseModel && currentModelData.length > 0) data = currentModelData;
+    else if (Generators[type as keyof typeof Generators]) data = Generators[type as keyof typeof Generators]();
     if (data && engineRef.current) {
-      setManualProgress(0); // Reset for manual mode
+      setManualProgress(0);
       engineRef.current.rebuild(data, manualMode);
     }
   };
 
-  const handleSelectCustomRebuild = (model: SavedModel) => {
-      if (engineRef.current) {
-          engineRef.current.rebuild(model.data);
-      }
-  };
+  const handleStartMagnetGame = () => {
+    if (currentModelData.length > 0 && engineRef.current) {
+        setCollectedCount(0);
+        engineRef.current.startCollectionGame(currentModelData);
+    }
+  }
 
   const handleManualProgressClick = () => {
       if (appState !== AppState.MANUAL_REBUILDING) return;
-      
-      const step = 4; // How much % per click
+      const step = 4;
       const next = Math.min(100, manualProgress + step);
       setManualProgress(next);
       engineRef.current?.setManualProgress(next);
@@ -137,103 +213,32 @@ const App: React.FC = () => {
     }
   };
 
-  const handleImportClick = () => {
-      setJsonModalMode('import');
-      setIsJsonModalOpen(true);
-  };
-
   const handleJsonImport = (jsonStr: string) => {
       try {
           const rawData = JSON.parse(jsonStr);
-          if (!Array.isArray(rawData)) throw new Error("JSON must be an array");
-
-          const voxelData: VoxelData[] = rawData.map((v: any) => {
-              let colorVal = v.c || v.color;
-              let colorInt = 0xCCCCCC;
-
-              if (typeof colorVal === 'string') {
-                  if (colorVal.startsWith('#')) colorVal = colorVal.substring(1);
-                  colorInt = parseInt(colorVal, 16);
-              } else if (typeof colorVal === 'number') {
-                  colorInt = colorVal;
-              }
-
-              return {
-                  x: Number(v.x) || 0,
-                  y: Number(v.y) || 0,
-                  z: Number(v.z) || 0,
-                  color: isNaN(colorInt) ? 0xCCCCCC : colorInt
-              };
-          });
-          
+          const voxelData: VoxelData[] = rawData.map((v: any) => ({
+              x: Number(v.x) || 0,
+              y: Number(v.y) || 0,
+              z: Number(v.z) || 0,
+              color: typeof v.color === 'string' ? parseInt(v.color.replace('#',''), 16) : v.color
+          }));
           if (engineRef.current) {
               engineRef.current.loadInitialModel(voxelData);
               setCurrentModelData(voxelData);
-              setCurrentBaseModel('Imported Build');
+              setCurrentBaseModel('Importado');
           }
-      } catch (e) {
-          console.error("Failed to import JSON", e);
-          alert("Failed to import JSON. Please ensure the format is correct.");
-      }
+      } catch (e) { alert("Falha ao importar JSON"); }
   };
 
-  const openPrompt = (mode: 'create' | 'morph') => {
-      setPromptMode(mode);
-      setIsPromptModalOpen(true);
-  }
-  
-  const handleToggleRotation = () => {
-      const newState = !isAutoRotate;
-      setIsAutoRotate(newState);
-      if (engineRef.current) {
-          engineRef.current.setAutoRotate(newState);
-      }
-  }
-
   const handlePromptSubmit = async (prompt: string) => {
-    if (!process.env.API_KEY) {
-        throw new Error("API Key not found");
-    }
-
     setIsGenerating(true);
     setIsPromptModalOpen(false);
-
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const model = 'gemini-3-pro-preview';
-        
-        let systemContext = "";
-        if (promptMode === 'morph' && engineRef.current) {
-            const availableColors = engineRef.current.getUniqueColors().join(', ');
-            systemContext = `
-                CONTEXT: You are re-assembling an existing pile of lego-like voxels.
-                The current pile consists of these colors: [${availableColors}].
-                TRY TO USE THESE COLORS if they fit the requested shape.
-                If the requested shape absolutely requires different colors, you may use them, but prefer the existing palette to create a "rebuilding" effect.
-                The model should be roughly the same volume as the previous one.
-            `;
-        } else {
-            systemContext = `
-                CONTEXT: You are creating a brand new voxel art scene from scratch.
-                Be creative with colors.
-            `;
-        }
-
         const response = await ai.models.generateContent({
             model,
-            contents: `
-                    ${systemContext}
-                    
-                    Task: Generate a 3D voxel art model of: "${prompt}".
-                    
-                    Strict Rules:
-                    1. Use approximately 150 to 600 voxels.
-                    2. The model must be centered at x=0, z=0.
-                    3. The bottom of the model must be at y=0 or slightly higher.
-                    4. Ensure the structure is physically plausible (connected).
-                    5. Coordinates should be integers.
-                    
-                    Return ONLY a JSON array of objects.`,
+            contents: `Gere um modelo de arte voxel 3D de: "${prompt}". Retorne APENAS um array JSON de objetos {x, y, z, color}.`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -244,31 +249,18 @@ const App: React.FC = () => {
                             x: { type: Type.INTEGER },
                             y: { type: Type.INTEGER },
                             z: { type: Type.INTEGER },
-                            color: { type: Type.STRING, description: "Hex color code e.g. #FF5500" }
+                            color: { type: Type.STRING }
                         },
                         required: ["x", "y", "z", "color"]
                     }
                 }
             }
         });
-
         if (response.text) {
-            const rawData = JSON.parse(response.text);
-            
-            // Validate and transform to VoxelData
-            const voxelData: VoxelData[] = rawData.map((v: any) => {
-                let colorStr = v.color;
-                if (colorStr.startsWith('#')) colorStr = colorStr.substring(1);
-                const colorInt = parseInt(colorStr, 16);
-                
-                return {
-                    x: v.x,
-                    y: v.y,
-                    z: v.z,
-                    color: isNaN(colorInt) ? 0xCCCCCC : colorInt
-                };
-            });
-
+            const voxelData: VoxelData[] = JSON.parse(response.text).map((v: any) => ({
+                x: v.x, y: v.y, z: v.z,
+                color: parseInt(v.color.replace('#',''), 16)
+            }));
             if (engineRef.current) {
                 if (promptMode === 'create') {
                     engineRef.current.loadInitialModel(voxelData);
@@ -277,59 +269,67 @@ const App: React.FC = () => {
                     setCurrentBaseModel(prompt);
                 } else {
                     engineRef.current.rebuild(voxelData);
-                    setCustomRebuilds(prev => [...prev, { 
-                        name: prompt, 
-                        data: voxelData,
-                        baseModel: currentBaseModel 
-                    }]);
                 }
             }
         }
-    } catch (err) {
-        console.error("Generation failed", err);
-        alert("Oops! Something went wrong generating the model.");
-    } finally {
-        setIsGenerating(false);
-    }
+    } catch (err) { alert("Erro na geração IA."); } finally { setIsGenerating(false); }
   };
 
-  const relevantRebuilds = customRebuilds.filter(
-      r => r.baseModel === currentBaseModel
-  );
-
   return (
-    <div className="relative w-full h-full bg-[#87CEEB] overflow-hidden font-sans fixed inset-0">
-      {/* 3D Container */}
-      <div ref={containerRef} className="absolute inset-0 z-0" />
+    <div className="relative w-full h-full bg-[#87CEEB] overflow-hidden font-sans fixed inset-0 touch-none">
       
-      {/* UI Overlay */}
-      <UIOverlay 
-        voxelCount={voxelCount}
-        appState={appState}
-        currentBaseModel={currentBaseModel}
-        customBuilds={customBuilds}
-        customRebuilds={relevantRebuilds} 
-        isAutoRotate={isAutoRotate}
-        isInfoVisible={showWelcome}
-        isGenerating={isGenerating}
-        manualProgress={manualProgress}
-        onDismantle={handleDismantle}
-        onRebuild={handleRebuild}
-        onManualRebuildClick={handleManualProgressClick}
-        onNewScene={handleNewScene}
-        onSelectCustomBuild={handleSelectCustomBuild}
-        onSelectCustomRebuild={handleSelectCustomRebuild}
-        onPromptCreate={() => openPrompt('create')}
-        onPromptMorph={() => openPrompt('morph')}
-        onShowJson={handleShowJson}
-        onImportJson={handleImportClick}
-        onToggleRotation={handleToggleRotation}
-        onToggleInfo={() => setShowWelcome(!showWelcome)}
-      />
+      {/* 3D Container (Only if not in 2D mode) */}
+      {gameMode !== 'ADVENTURE_2D' && (
+          <div ref={containerRef} className="absolute inset-0 z-0 cursor-crosshair" />
+      )}
 
-      {/* Modals & Screens */}
+      {/* 2D Mode */}
+      {gameMode === 'ADVENTURE_2D' && (
+          <Game2DView onBack={() => setGameMode('MENU')} />
+      )}
       
-      <WelcomeScreen visible={showWelcome} />
+      {/* Main Menu */}
+      {gameMode === 'MENU' && (
+          <MainMenu onSelectMode={handleSelectMode} />
+      )}
+
+      {/* Game UI */}
+      {gameMode !== 'MENU' && gameMode !== 'ADVENTURE_2D' && (
+          <UIOverlay 
+            voxelCount={voxelCount}
+            appState={appState}
+            gameMode={gameMode}
+            currentBaseModel={currentBaseModel}
+            customBuilds={customBuilds}
+            customRebuilds={customRebuilds.filter(r => r.baseModel === currentBaseModel)} 
+            isAutoRotate={isAutoRotate}
+            isGenerating={isGenerating}
+            manualProgress={manualProgress}
+            collectedCount={collectedCount}
+            onDismantle={handleDismantle}
+            onRebuild={handleRebuild}
+            onManualRebuildClick={handleManualProgressClick}
+            onStartMagnetGame={handleStartMagnetGame}
+            onNewScene={handleNewScene}
+            onSelectCustomBuild={handleSelectCustomBuild}
+            onSelectCustomRebuild={(m) => engineRef.current?.rebuild(m.data)}
+            onPromptCreate={() => {setPromptMode('create'); setIsPromptModalOpen(true);}}
+            onPromptMorph={() => {setPromptMode('morph'); setIsPromptModalOpen(true);}}
+            onShowJson={handleShowJson}
+            onImportJson={() => {setJsonModalMode('import'); setIsJsonModalOpen(true);}}
+            onToggleRotation={() => {setIsAutoRotate(!isAutoRotate); engineRef.current?.setAutoRotate(!isAutoRotate);}}
+            onBackToMenu={() => setGameMode('MENU')}
+            onNextLevel={handleNextLevel}
+            isLevelComplete={isLevelComplete}
+            currentLevel={GAME_LEVELS[currentLevelIndex]}
+          />
+      )}
+
+      {gameMode === 'CHALLENGE' && showLevelIntro && (
+          <LevelIntroModal level={GAME_LEVELS[currentLevelIndex]} onStart={startCurrentLevelGame} />
+      )}
+
+      <WelcomeScreen visible={showWelcome && gameMode === 'FREE'} />
 
       <JsonModal 
         isOpen={isJsonModalOpen}

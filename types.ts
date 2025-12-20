@@ -1,8 +1,8 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-
 
 import * as THREE from 'three';
 
@@ -10,7 +10,17 @@ export enum AppState {
   STABLE = 'STABLE',
   DISMANTLING = 'DISMANTLING',
   REBUILDING = 'REBUILDING',
-  MANUAL_REBUILDING = 'MANUAL_REBUILDING'
+  MANUAL_REBUILDING = 'MANUAL_REBUILDING',
+  COLLECTING = 'COLLECTING'
+}
+
+export type GameMode = 'MENU' | 'FREE' | 'CHALLENGE' | 'ADVENTURE_2D';
+
+export interface LevelConfig {
+  id: number;
+  characterKey: string;
+  name: string;
+  description: string;
 }
 
 export interface VoxelData {
@@ -26,7 +36,6 @@ export interface SimulationVoxel {
   y: number;
   z: number;
   color: THREE.Color;
-  // Physics state
   vx: number;
   vy: number;
   vz: number;
@@ -36,6 +45,8 @@ export interface SimulationVoxel {
   rvx: number;
   rvy: number;
   rvz: number;
+  isCollected?: boolean;
+  collectionTime?: number;
 }
 
 export interface RebuildTarget {
